@@ -1,4 +1,4 @@
-module tangentcode.com/chesscoach
+module github.com/tangentstorm/chesscoach
 
 go 1.13
 

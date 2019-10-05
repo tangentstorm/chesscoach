@@ -4,6 +4,12 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	_ "image/png"
+	"log"
+
 	"github.com/golang/freetype/truetype"
 	eb "github.com/hajimehoshi/ebiten"
 	ebu "github.com/hajimehoshi/ebiten/ebitenutil"
@@ -11,17 +17,13 @@ import (
 	ebi "github.com/hajimehoshi/ebiten/inpututil"
 	ebt "github.com/hajimehoshi/ebiten/text"
 	"golang.org/x/image/font"
-	"image"
-	"image/color"
-	"image/draw"
-	_ "image/png"
-	"log"
+
+	"github.com/tangentstorm/chesscoach/chess"
 )
 
 const cellSize = 48 // size of grid cells
 
-type Square struct{ x, y int }
-
+// Marker is an enum used for annotating the board in the UI.
 type marker int
 
 const (
@@ -31,17 +33,18 @@ const (
 	o1               // ... ending square
 )
 
-// images of the white/black chess pieces
-var wp, wr, wn, wb, wq, wk, bp, br, bn, bb, bq, bk *eb.Image
-var mainFont font.Face
-var files = []byte{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}
-var nowhere = Square{-1, -1}
-var markers = map[marker]Square{
-	p0: nowhere,
-	p1: nowhere,
-	o0: nowhere,
-	o1: nowhere,
+var board chess.Board
+var markers = map[marker]chess.Square{
+	p0: chess.Nowhere,
+	p1: chess.Nowhere,
+	o0: chess.Nowhere,
+	o1: chess.Nowhere,
 }
+
+var mainFont font.Face
+
+// images of the white/black chess pieces
+var icons [13]*eb.Image // 13 = card(piece)
 
 func sprite(path string) *eb.Image {
 	im, _, err := ebu.NewImageFromFile(path, eb.FilterDefault)
@@ -52,18 +55,19 @@ func sprite(path string) *eb.Image {
 }
 
 func init() {
-	wp = sprite("sprites/wp.png")
-	wr = sprite("sprites/wr.png")
-	wn = sprite("sprites/wn.png")
-	wb = sprite("sprites/wb.png")
-	wq = sprite("sprites/wq.png")
-	wk = sprite("sprites/wk.png")
-	bp = sprite("sprites/bp.png")
-	br = sprite("sprites/br.png")
-	bn = sprite("sprites/bn.png")
-	bb = sprite("sprites/bb.png")
-	bq = sprite("sprites/bq.png")
-	bk = sprite("sprites/bk.png")
+	board = chess.StartPos()
+	icons[chess.WP] = sprite("sprites/wp.png")
+	icons[chess.WR] = sprite("sprites/wr.png")
+	icons[chess.WN] = sprite("sprites/wn.png")
+	icons[chess.WB] = sprite("sprites/wb.png")
+	icons[chess.WQ] = sprite("sprites/wq.png")
+	icons[chess.WK] = sprite("sprites/wk.png")
+	icons[chess.BP] = sprite("sprites/bp.png")
+	icons[chess.BR] = sprite("sprites/br.png")
+	icons[chess.BN] = sprite("sprites/bn.png")
+	icons[chess.BB] = sprite("sprites/bb.png")
+	icons[chess.BQ] = sprite("sprites/bq.png")
+	icons[chess.BK] = sprite("sprites/bk.png")
 
 	// set up the font
 	tt, err := truetype.Parse(ebf.ArcadeN_ttf)
@@ -83,13 +87,10 @@ func blit(screen, im *eb.Image, gx, gy int) {
 	screen.DrawImage(im, op)
 }
 
-func mouseSquare() Square {
+func mouseSquare() chess.Square {
 	x, y := eb.CursorPosition()
 	x, y = x/cellSize, y/cellSize
-	if x >= 0 && y >= 0 && x <= 7 && y <= 7 {
-		return Square{x: x, y: y}
-	}
-	return nowhere
+	return chess.SquareAt(x, y)
 }
 
 func update(screen *eb.Image) error {
@@ -97,10 +98,10 @@ func update(screen *eb.Image) error {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
 		sq := mouseSquare()
 		switch {
-		case markers[p0] == nowhere:
+		case markers[p0] == chess.Nowhere:
 			markers[p0] = sq
 		case markers[p0] == sq:
-			markers[p0] = nowhere
+			markers[p0] = chess.Nowhere
 		default:
 			// TODO: actually make the move
 		}
@@ -115,7 +116,7 @@ func update(screen *eb.Image) error {
 	dark := color.RGBA{0, 0, 127, 255}
 	highlight := color.RGBA{224, 164, 0, 63}
 
-	c := &light
+	var c color.Color
 	for y := 0; y < 8; y++ {
 		for x := 0; x < 8; x++ {
 			x0, y0 := x*cellSize, y*cellSize
@@ -125,7 +126,7 @@ func update(screen *eb.Image) error {
 			} else {
 				c = &dark
 			}
-			if x == markers[p0].x && y == markers[p0].y {
+			if markers[p0] == chess.SquareAt(x,y) {
 				c = &highlight
 			}
 			draw.Draw(screen, sq, &image.Uniform{c}, image.ZP, draw.Src)
@@ -133,25 +134,12 @@ func update(screen *eb.Image) error {
 	}
 
 	// draw opening board
-	blit(screen, br, 0, 0)
-	blit(screen, bn, 1, 0)
-	blit(screen, bb, 2, 0)
-	blit(screen, bq, 3, 0)
-	blit(screen, bk, 4, 0)
-	blit(screen, bb, 5, 0)
-	blit(screen, bn, 6, 0)
-	blit(screen, br, 7, 0)
-	blit(screen, wr, 0, 7)
-	blit(screen, wn, 1, 7)
-	blit(screen, wb, 2, 7)
-	blit(screen, wq, 3, 7)
-	blit(screen, wk, 4, 7)
-	blit(screen, wb, 5, 7)
-	blit(screen, wn, 6, 7)
-	blit(screen, wr, 7, 7)
-	for i := 0; i < 8; i++ {
-		blit(screen, wp, i, 6)
-		blit(screen, bp, i, 1)
+	for y, file := range board {
+		for x, p := range file {
+			if p > chess.NO {
+				blit(screen, icons[p], x, y)
+			}
+		}
 	}
 
 	const textX = cellSize*8 + 16
@@ -160,12 +148,9 @@ func update(screen *eb.Image) error {
 	ebt.Draw(screen, "Use mouse to select move.", mainFont, textX, 48, color.White)
 
 	ms := mouseSquare()
-	if ms != nowhere {
-		f := files[ms.x]
-		r := 8 - ms.y
-		ebt.Draw(screen, fmt.Sprintf("Mouse is over %c%d", f, r), mainFont, textX, 96, color.White)
+	if ms != chess.Nowhere {
+		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms.Name()), mainFont, textX, 96, color.White)
 	}
-
 	return nil
 }
 
