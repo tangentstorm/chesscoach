@@ -87,14 +87,17 @@ func blit(screen, im *eb.Image, gx, gy int) {
 }
 
 func squareAt(x, y int) chess.Square {
-	if sq := int(8*(7-y))+x; sq < 64 && sq >= 0 {
-		return chess.Square(sq)
+	if x < 0 || x > 7 || y < 0 || y > 7 {
+		return chess.NoSquare
 	}
-	return chess.NoSquare
+	return chess.Square(int(8*(7-y))+x)
 }
 
 func mouseSquare() chess.Square {
 	x, y := eb.CursorPosition()
+	if x < 0 || y < 0 {
+		return chess.NoSquare
+	}
 	x, y = x/cellSize, y/cellSize
 	return squareAt(x, y)
 }
