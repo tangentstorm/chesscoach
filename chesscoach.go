@@ -12,23 +12,27 @@ import (
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
+	"github.com/notnil/chess"
 	eb "github.com/hajimehoshi/ebiten"
 	ebu "github.com/hajimehoshi/ebiten/ebitenutil"
 	ebf "github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	ebi "github.com/hajimehoshi/ebiten/inpututil"
 	ebt "github.com/hajimehoshi/ebiten/text"
-	"github.com/notnil/chess"
+	uci "gopkg.in/freeeve/uci.v1"
 )
 
 const cellSize = 48 // size of grid cells
 
-var game *chess.Game
-var p0 = chess.NoSquare  // player's selected square
-
-var mainFont font.Face
-
-// images of the white/black chess pieces
-var icons [13]*eb.Image // 13 = card(piece)
+var (
+	// -- state of the current game
+	game *chess.Game
+	eng *uci.Engine
+	// -- ui state --
+	p0 = chess.NoSquare  // player's selected square
+	// -- assets ---
+	mainFont font.Face
+	icons [13]*eb.Image // 13 = card(piece)
+)
 
 func sprite(path string) *eb.Image {
 	im, _, err := ebu.NewImageFromFile(path, eb.FilterDefault)
@@ -38,8 +42,25 @@ func sprite(path string) *eb.Image {
 	return im
 }
 
+func getEngine() *uci.Engine {
+	eng, err := uci.NewEngine("./stockfish_10_x64")
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	eng.SetOptions(uci.Options{
+		Hash:128,
+		Ponder:false,
+		OwnBook:true,
+		MultiPV:32,
+	})
+	return eng
+}
+
 func init() {
 	game = chess.NewGame()
+	eng = getEngine()
+	updateEngine()
 	icons[chess.WhitePawn] = sprite("sprites/wp.png")
 	icons[chess.WhiteRook] = sprite("sprites/wr.png")
 	icons[chess.WhiteKnight] = sprite("sprites/wn.png")
@@ -122,6 +143,48 @@ func validMove(sq0, sq1 chess.Square) (valid bool, mv *chess.Move) {
 	return false, nil
 }
 
+func updateEngine() {
+	fmt.Println("game:", game)
+	fmt.Println("turn:", game.Position().Turn())
+	fmt.Println("FEN:", game.Position())
+
+	if eng != nil {
+		eng.SetFEN(game.Position().String())
+		// set some result filter options
+		resultOpts := uci.HighestDepthOnly | uci.IncludeUpperbounds | uci.IncludeLowerbounds
+		results, _ := eng.GoDepth(10, resultOpts)
+
+		// print it (String() goes to pretty JSON for now)
+		for _, r := range results.Results {
+			fmt.Println(r.BestMoves[0], r.Score)
+		}
+		fmt.Println("bestmove: ", results.BestMove)
+		if game.Position().Turn() == chess.Black {
+			addMoveStr(results.BestMove)
+		}
+	}
+}
+
+func addMoveStr(s string) {
+	var note chess.LongAlgebraicNotation
+	mv, err := note.Decode(game.Position(), s)
+	if err != nil {
+		log.Println(err)
+	} else {
+		addMove(mv)
+	}
+}
+
+func addMove(mv *chess.Move) {
+	err := game.Move(mv)
+	if err == nil {
+		p0 = chess.NoSquare
+	} else {
+		log.Println(err)
+	}
+	updateEngine()
+}
+
 func watchMouse() {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
 		ms := mouseSquare()
@@ -132,12 +195,7 @@ func watchMouse() {
 			p0 = chess.NoSquare
 		default:
 			if valid, mv := validMove(p0, ms); valid {
-				err := game.Move(mv)
-				if err == nil {
-					p0 = chess.NoSquare
-				} else {
-					log.Println(err)
-				}
+				addMove(mv)
 			}
 		}
 	}

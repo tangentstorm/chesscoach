@@ -36,3 +36,5 @@ golang.org/x/sys v0.0.0-20190203050204-7ae0202eb74c h1:YeMXU0KQqExdpG959DFhAhfpY
 golang.org/x/sys v0.0.0-20190203050204-7ae0202eb74c/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/tools v0.0.0-20190202235157-7414d4c1f71c/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/freeeve/uci.v1 v1.0.0-20160113194233-2365824b929d h1:S+XIjDIXojfrWs2v9BhkdvIjktYh6XdRZe3LPQTj5/0=
+gopkg.in/freeeve/uci.v1 v1.0.0-20160113194233-2365824b929d/go.mod h1:zpECLMSAZT8pg7PaN5IpZqeC1iV+I4ADkIyudRSN4yg=
