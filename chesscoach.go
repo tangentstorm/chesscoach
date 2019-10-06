@@ -22,23 +22,8 @@ import (
 
 const cellSize = 48 // size of grid cells
 
-// Marker is an enum used for annotating the board in the UI.
-type marker int
-
-const (
-	p0 marker = iota // player's starting square
-	p1               // ... ending square
-	o0               // opponent's starting square
-	o1               // ... ending square
-)
-
 var game *chess.Game
-var markers = map[marker]chess.Square{
-	p0: chess.NoSquare,
-	p1: chess.NoSquare,
-	o0: chess.NoSquare,
-	o1: chess.NoSquare,
-}
+var p0 = chess.NoSquare  // player's selected square
 
 var mainFont font.Face
 
@@ -105,9 +90,9 @@ func mouseSquare() chess.Square {
 func validSquares() (result []chess.Square) {
 	counts := make(map[chess.Square] int)
 	for _, mv := range game.ValidMoves() {
-		if markers[p0] == chess.NoSquare {
+		if p0 == chess.NoSquare {
 			counts[mv.S1()]++
-		} else if markers[p0] == mv.S1() {
+		} else if p0 == mv.S1() {
 			counts[mv.S2()]++
 		}
 	}
@@ -121,20 +106,24 @@ func watchMouse() {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
 		sq := mouseSquare()
 		switch {
-		case markers[p0] == chess.NoSquare:
-			markers[p0] = sq
-		case markers[p0] == sq:
-			markers[p0] = chess.NoSquare
+		case p0 == chess.NoSquare:
+			p0 = sq
+		case p0 == sq:
+			p0 = chess.NoSquare
 		default:
 			// TODO: actually make the move
 		}
 	}
 }
 
-func drawSquare(screen *eb.Image, x, y int, c color.Color) {
+func drawSquareXY(screen *eb.Image, x, y int, c color.Color) {
 	x0, y0 := x*cellSize, (7-y)*cellSize
 	rect := image.Rect(x0, y0, x0+cellSize-1, y0+cellSize-1)
 	draw.Draw(screen, rect, &image.Uniform{c}, image.ZP, draw.Src)
+}
+
+func drawSquare(screen *eb.Image, sq chess.Square, c color.Color) {
+	drawSquareXY(screen, int(sq.File()), int(sq.Rank()), c)
 }
 
 func drawBoard(screen *eb.Image) {
@@ -148,7 +137,7 @@ func drawBoard(screen *eb.Image) {
 			} else {
 				c = &dark
 			}
-			drawSquare(screen, x, 7-y, c)
+			drawSquareXY(screen, x, 7-y, c)
 		}
 	}
 }
@@ -159,13 +148,13 @@ func drawMarks(screen *eb.Image) {
 	validDark := color.RGBA{32, 32, 64, 63}
 	for _, sq := range validSquares() {
 		if int(sq.Rank())&1 == int(sq.File())&1  {
-			drawSquare(screen, int(sq.File()), int(sq.Rank()), validDark)
+			drawSquare(screen, sq, validDark)
 		} else {
-			drawSquare(screen, int(sq.File()), int(sq.Rank()), validLight)
+			drawSquare(screen, sq, validLight)
 		}
 	}
-	if sq := markers[p0]; sq != chess.NoSquare {
-		drawSquare(screen, int(sq.File()), int(sq.Rank()), highlight)
+	if p0 != chess.NoSquare {
+		drawSquare(screen, p0, highlight)
 	}
 }
 
