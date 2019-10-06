@@ -87,6 +87,15 @@ func mouseSquare() chess.Square {
 	return squareAt(x, y)
 }
 
+func isValidSquare(sq chess.Square) bool {
+	for _, mv := range game.ValidMoves() {
+		if mv.S1() == sq {
+			return true
+		}
+	}
+	return false
+}
+
 func validSquares() (result []chess.Square) {
 	counts := make(map[chess.Square] int)
 	for _, mv := range game.ValidMoves() {
@@ -102,16 +111,34 @@ func validSquares() (result []chess.Square) {
 	return result
 }
 
+// Checks whether the start and end squares comprise a valid move.
+// TODO: pawn promotion.
+func validMove(sq0, sq1 chess.Square) (valid bool, mv *chess.Move) {
+	for _, mv = range game.ValidMoves() {
+		if mv.S1() == sq0 && mv.S2() == sq1 {
+			return true, mv
+		}
+	}
+	return false, nil
+}
+
 func watchMouse() {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
-		sq := mouseSquare()
+		ms := mouseSquare()
 		switch {
-		case p0 == chess.NoSquare:
-			p0 = sq
-		case p0 == sq:
+		case p0 == chess.NoSquare && isValidSquare(ms):
+			p0 = ms
+		case p0 == ms:  // click again to disable
 			p0 = chess.NoSquare
 		default:
-			// TODO: actually make the move
+			if valid, mv := validMove(p0, ms); valid {
+				err := game.Move(mv)
+				if err == nil {
+					p0 = chess.NoSquare
+				} else {
+					log.Println(err)
+				}
+			}
 		}
 	}
 }
