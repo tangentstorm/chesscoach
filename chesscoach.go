@@ -11,13 +11,14 @@ import (
 	"log"
 
 	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 	eb "github.com/hajimehoshi/ebiten"
 	ebu "github.com/hajimehoshi/ebiten/ebitenutil"
 	ebf "github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	ebi "github.com/hajimehoshi/ebiten/inpututil"
 	ebt "github.com/hajimehoshi/ebiten/text"
-	"golang.org/x/image/font"
 	lib "github.com/tangentstorm/chesscoach/lib"
+	"github.com/notnil/chess"
 )
 
 const cellSize = 48 // size of grid cells
@@ -32,7 +33,7 @@ const (
 	o1               // ... ending square
 )
 
-var board lib.Board
+var game *chess.Game
 var markers = map[marker]lib.Square{
 	p0: lib.Nowhere,
 	p1: lib.Nowhere,
@@ -54,19 +55,19 @@ func sprite(path string) *eb.Image {
 }
 
 func init() {
-	board = lib.StartPos()
-	icons[lib.WP] = sprite("sprites/wp.png")
-	icons[lib.WR] = sprite("sprites/wr.png")
-	icons[lib.WN] = sprite("sprites/wn.png")
-	icons[lib.WB] = sprite("sprites/wb.png")
-	icons[lib.WQ] = sprite("sprites/wq.png")
-	icons[lib.WK] = sprite("sprites/wk.png")
-	icons[lib.BP] = sprite("sprites/bp.png")
-	icons[lib.BR] = sprite("sprites/br.png")
-	icons[lib.BN] = sprite("sprites/bn.png")
-	icons[lib.BB] = sprite("sprites/bb.png")
-	icons[lib.BQ] = sprite("sprites/bq.png")
-	icons[lib.BK] = sprite("sprites/bk.png")
+	game = chess.NewGame()
+	icons[chess.WhitePawn] = sprite("sprites/wp.png")
+	icons[chess.WhiteRook] = sprite("sprites/wr.png")
+	icons[chess.WhiteKnight] = sprite("sprites/wn.png")
+	icons[chess.WhiteBishop] = sprite("sprites/wb.png")
+	icons[chess.WhiteQueen] = sprite("sprites/wq.png")
+	icons[chess.WhiteKing] = sprite("sprites/wk.png")
+	icons[chess.BlackPawn] = sprite("sprites/bp.png")
+	icons[chess.BlackRook] = sprite("sprites/br.png")
+	icons[chess.BlackKnight] = sprite("sprites/bn.png")
+	icons[chess.BlackBishop] = sprite("sprites/bb.png")
+	icons[chess.BlackQueen] = sprite("sprites/bq.png")
+	icons[chess.BlackKing] = sprite("sprites/bk.png")
 
 	// set up the font
 	tt, err := truetype.Parse(ebf.ArcadeN_ttf)
@@ -132,14 +133,10 @@ func update(screen *eb.Image) error {
 		}
 	}
 
-	// draw opening board
-	for y, file := range board {
-		for x, p := range file {
-			if p > lib.NO {
-				blit(screen, icons[p], x, y)
-			}
-		}
+	for sq, p := range game.Position().Board().SquareMap() {
+		blit(screen, icons[p], int(sq.File()), int(sq.Rank()))
 	}
+
 
 	const textX = cellSize*8 + 16
 	ebt.Draw(screen, "Hello. I am chess coach.", mainFont, textX, 16, color.White)
