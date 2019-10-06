@@ -17,7 +17,6 @@ import (
 	ebf "github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	ebi "github.com/hajimehoshi/ebiten/inpututil"
 	ebt "github.com/hajimehoshi/ebiten/text"
-	lib "github.com/tangentstorm/chesscoach/lib"
 	"github.com/notnil/chess"
 )
 
@@ -34,11 +33,11 @@ const (
 )
 
 var game *chess.Game
-var markers = map[marker]lib.Square{
-	p0: lib.Nowhere,
-	p1: lib.Nowhere,
-	o0: lib.Nowhere,
-	o1: lib.Nowhere,
+var markers = map[marker]chess.Square{
+	p0: chess.NoSquare,
+	p1: chess.NoSquare,
+	o0: chess.NoSquare,
+	o1: chess.NoSquare,
 }
 
 var mainFont font.Face
@@ -87,10 +86,17 @@ func blit(screen, im *eb.Image, gx, gy int) {
 	screen.DrawImage(im, op)
 }
 
-func mouseSquare() lib.Square {
+func squareAt(x, y int) chess.Square {
+	if sq := int(8*(7-y))+x; sq < 64 && sq >= 0 {
+		return chess.Square(sq)
+	}
+	return chess.NoSquare
+}
+
+func mouseSquare() chess.Square {
 	x, y := eb.CursorPosition()
 	x, y = x/cellSize, y/cellSize
-	return lib.SquareAt(x, y)
+	return squareAt(x, y)
 }
 
 func update(screen *eb.Image) error {
@@ -98,10 +104,10 @@ func update(screen *eb.Image) error {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
 		sq := mouseSquare()
 		switch {
-		case markers[p0] == lib.Nowhere:
+		case markers[p0] == chess.NoSquare:
 			markers[p0] = sq
 		case markers[p0] == sq:
-			markers[p0] = lib.Nowhere
+			markers[p0] = chess.NoSquare
 		default:
 			// TODO: actually make the move
 		}
@@ -126,7 +132,7 @@ func update(screen *eb.Image) error {
 			} else {
 				c = &dark
 			}
-			if markers[p0] == lib.SquareAt(x,y) {
+			if markers[p0] == squareAt(x,y) {
 				c = &highlight
 			}
 			draw.Draw(screen, sq, &image.Uniform{c}, image.ZP, draw.Src)
@@ -134,7 +140,7 @@ func update(screen *eb.Image) error {
 	}
 
 	for sq, p := range game.Position().Board().SquareMap() {
-		blit(screen, icons[p], int(sq.File()), int(sq.Rank()))
+		blit(screen, icons[p], int(sq.File()), 7-int(sq.Rank()))
 	}
 
 
@@ -144,8 +150,8 @@ func update(screen *eb.Image) error {
 	ebt.Draw(screen, "Use mouse to select move.", mainFont, textX, 48, color.White)
 
 	ms := mouseSquare()
-	if ms != lib.Nowhere {
-		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms.Name()), mainFont, textX, 96, color.White)
+	if ms != chess.NoSquare {
+		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms), mainFont, textX, 96, color.White)
 	}
 	return nil
 }
