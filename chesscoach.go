@@ -102,8 +102,22 @@ func mouseSquare() chess.Square {
 	return squareAt(x, y)
 }
 
-func update(screen *eb.Image) error {
+func validSquares() (result []chess.Square) {
+	counts := make(map[chess.Square] int)
+	for _, mv := range game.ValidMoves() {
+		if markers[p0] == chess.NoSquare {
+			counts[mv.S1()]++
+		} else if markers[p0] == mv.S1() {
+			counts[mv.S2()]++
+		}
+	}
+	for sq := range counts {
+		result = append(result, sq)
+	}
+	return result
+}
 
+func watchMouse() {
 	if ebi.IsMouseButtonJustPressed(eb.MouseButtonLeft) {
 		sq := mouseSquare()
 		switch {
@@ -115,46 +129,69 @@ func update(screen *eb.Image) error {
 			// TODO: actually make the move
 		}
 	}
+}
 
-	if eb.IsDrawingSkipped() {
-		return nil
-	}
+func drawSquare(screen *eb.Image, x, y int, c color.Color) {
+	x0, y0 := x*cellSize, (7-y)*cellSize
+	rect := image.Rect(x0, y0, x0+cellSize-1, y0+cellSize-1)
+	draw.Draw(screen, rect, &image.Uniform{c}, image.ZP, draw.Src)
+}
 
-	// draw the board
+func drawBoard(screen *eb.Image) {
 	light := color.RGBA{0, 0, 255, 255}
 	dark := color.RGBA{0, 0, 127, 255}
-	highlight := color.RGBA{224, 164, 0, 63}
-
 	var c color.Color
 	for y := 0; y < 8; y++ {
 		for x := 0; x < 8; x++ {
-			x0, y0 := x*cellSize, y*cellSize
-			sq := image.Rect(x0, y0, x0+cellSize-1, y0+cellSize-1)
 			if (y & 1) == (x & 1) {
 				c = &light
 			} else {
 				c = &dark
 			}
-			if markers[p0] == squareAt(x,y) {
-				c = &highlight
-			}
-			draw.Draw(screen, sq, &image.Uniform{c}, image.ZP, draw.Src)
+			drawSquare(screen, x, 7-y, c)
 		}
 	}
+}
 
+func drawMarks(screen *eb.Image) {
+	highlight := color.RGBA{224, 164, 0, 63}
+	validLight := color.RGBA{63, 63, 127, 63}
+	validDark := color.RGBA{32, 32, 64, 63}
+	for _, sq := range validSquares() {
+		if int(sq.Rank())&1 == int(sq.File())&1  {
+			drawSquare(screen, int(sq.File()), int(sq.Rank()), validDark)
+		} else {
+			drawSquare(screen, int(sq.File()), int(sq.Rank()), validLight)
+		}
+	}
+	if sq := markers[p0]; sq != chess.NoSquare {
+		drawSquare(screen, int(sq.File()), int(sq.Rank()), highlight)
+	}
+}
+
+func drawPieces(screen *eb.Image) {
 	for sq, p := range game.Position().Board().SquareMap() {
 		blit(screen, icons[p], int(sq.File()), 7-int(sq.Rank()))
 	}
+}
 
-
+func drawText(screen *eb.Image) {
 	const textX = cellSize*8 + 16
 	ebt.Draw(screen, "Hello. I am chess coach.", mainFont, textX, 16, color.White)
 	ebt.Draw(screen, "You are playing white today.", mainFont, textX, 32, color.White)
 	ebt.Draw(screen, "Use mouse to select move.", mainFont, textX, 48, color.White)
-
-	ms := mouseSquare()
-	if ms != chess.NoSquare {
+	if ms := mouseSquare(); ms != chess.NoSquare {
 		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms), mainFont, textX, 96, color.White)
+	}
+}
+
+func update(screen *eb.Image) error {
+	watchMouse()
+	if ! eb.IsDrawingSkipped() {
+		drawBoard(screen)
+		drawMarks(screen)
+		drawPieces(screen)
+		drawText(screen)
 	}
 	return nil
 }
