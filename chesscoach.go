@@ -22,10 +22,15 @@ import (
 )
 
 const cellSize = 48 // size of grid cells
+const textX = cellSize*8 + 16
 
 var (
 	// -- state of the current game
 	game *chess.Game
+	// store the moves in algebraic notation as we go.
+	// it's inconvenient to calculate them from just the list of move objects
+	// at the end, as they require building the position at each step
+	moves []string
 	eng *uci.Engine
 	// -- ui state --
 	p0 = chess.NoSquare  // player's selected square
@@ -58,7 +63,7 @@ func getEngine() *uci.Engine {
 }
 
 func init() {
-	game = chess.NewGame()
+	game = chess.NewGame(chess.UseNotation(chess.AlgebraicNotation{}))
 	eng = getEngine()
 	updateEngine()
 	icons[chess.WhitePawn] = sprite("sprites/wp.png")
@@ -156,7 +161,7 @@ func updateEngine() {
 
 		// print it (String() goes to pretty JSON for now)
 		for _, r := range results.Results {
-			fmt.Println(r.BestMoves[0], r.Score)
+				fmt.Println(r.BestMoves[0], r.Score)
 		}
 		fmt.Println("bestmove: ", results.BestMove)
 		if game.Position().Turn() == chess.Black {
@@ -176,10 +181,13 @@ func addMoveStr(s string) {
 }
 
 func addMove(mv *chess.Move) {
+	alg := chess.AlgebraicNotation{}
+	moves = append(moves, alg.Encode(game.Position(), mv))
 	err := game.Move(mv)
 	if err == nil {
 		p0 = chess.NoSquare
 	} else {
+		moves = moves[:len(moves)-1]
 		log.Println(err)
 	}
 	updateEngine()
@@ -250,12 +258,22 @@ func drawPieces(screen *eb.Image) {
 }
 
 func drawText(screen *eb.Image) {
-	const textX = cellSize*8 + 16
 	ebt.Draw(screen, "Hello. I am chess coach.", mainFont, textX, 16, color.White)
 	ebt.Draw(screen, "You are playing white today.", mainFont, textX, 32, color.White)
 	ebt.Draw(screen, "Use mouse to select move.", mainFont, textX, 48, color.White)
 	if ms := mouseSquare(); ms != chess.NoSquare {
-		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms), mainFont, textX, 96, color.White)
+		ebt.Draw(screen, fmt.Sprintf("Mouse is over %s", ms), mainFont, textX, 64, color.White)
+	}
+}
+
+func drawMoves(screen *eb.Image) {
+	for i := 0; i < len(moves); i+=2 {
+		n := i >> 1
+		w, b := moves[i], "*"
+		if i+1 < len(moves) {
+			b = moves[i+1]
+		}
+		ebt.Draw(screen, fmt.Sprintf("%d. %s %s", n+1, w, b), mainFont, textX, 96+16*n, color.White)
 	}
 }
 
@@ -266,6 +284,7 @@ func update(screen *eb.Image) error {
 		drawMarks(screen)
 		drawPieces(screen)
 		drawText(screen)
+		drawMoves(screen)
 	}
 	return nil
 }
