@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>chess coach</title>
+
+  <!-- chessboard.js (requires jQuery) -->
+  <script src="lib/jquery-3.4.1.min.js"></script>
+  <script src="lib/chessboard-1.0.0.min.js"></script>
+  <style type="text/css">
+    @import "lib/chessboard.css";
+    .notation-322f9 { display: none } /* hide rank/file numbers in chessboard.js */
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+
+  <div id="chessboard" style="width:480px; height:480px"></div>
+
+</body>
+<script>
+
+
+var goal = "";
+var hist = [];
+var root = [];
+var node = [];
+var cpuIsWhite = false;
+const PLY = 0, ALGEBRAIC = 1, SRCTGT = 2, SCORE = 3, NEXT = 4;
+
+let chessboard = Chessboard('#chessboard', {
+  position: 'start',
+  orientation: cpuIsWhite ? 'black' : 'white',
+  draggable: true,
+  pieceTheme: (piece) => '../sprites/' + piece.toLowerCase() + '.png',
+  onDrop(source, target, piece, newPos, oldPos, orientation) {
+    let move = `${source}-${target}`;
+    if (move === goal || goal === "") {
+      hist.push(move);
+      setTimeout(cpuMove, 0)}
+    else return 'snapback';}});
+
+xhr = new XMLHttpRequest();
+xhr.open('GET', "repertoire.json");
+xhr.onload = function() { restart(JSON.parse(xhr.response), true) };
+xhr.send();
+
+
+// nodes in our game tree are of two types: choices or moves
+// the player always has a single move to match.
+// the cpu always has a choice of moves to make.
+function restart(tree, firstTime) {
+  cpuIsWhite = Boolean(Math.round(Math.random()));
+  chessboard.orientation(cpuIsWhite ? "black" : "white");
+  chessboard.start();
+  root = node = tree;
+  hist = [];
+  if (cpuIsWhite) setTimeout(cpuMove, 1000);
+  else playerMove(root[0]);}
+
+function playerMove(best) {
+  // user must choose the "best" move
+  goal = best[SRCTGT];
+  node = best[NEXT];}
+
+function cpuMove(){
+  // we should be looking at a choice node or null
+  if (node) {
+    let pick = Math.round(Math.random()*(node.length-1));
+    node = node[pick]; // now we're on a single move
+    hist.push(node[SRCTGT]);
+    chessboard.move(node[SRCTGT]);
+    let last = node[node.length-1];
+    if (Array.isArray(last)) playerMove(last[0]);
+    else restart(root)} // leaf node in repertoire is a cpu move:
+  else restart(root)} // leaf node was the player's move
+
+</script>
+</html>
