@@ -11,13 +11,13 @@ import (
 	"log"
 
 	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
-	"github.com/notnil/chess"
 	eb "github.com/hajimehoshi/ebiten"
 	ebu "github.com/hajimehoshi/ebiten/ebitenutil"
 	ebf "github.com/hajimehoshi/ebiten/examples/resources/fonts"
 	ebi "github.com/hajimehoshi/ebiten/inpututil"
 	ebt "github.com/hajimehoshi/ebiten/text"
+	"github.com/notnil/chess"
+	"golang.org/x/image/font"
 	uci "gopkg.in/freeeve/uci.v1"
 )
 
@@ -31,12 +31,12 @@ var (
 	// it's inconvenient to calculate them from just the list of move objects
 	// at the end, as they require building the position at each step
 	moves []string
-	eng *uci.Engine
+	eng   *uci.Engine
 	// -- ui state --
-	p0 = chess.NoSquare  // player's selected square
+	p0 = chess.NoSquare // player's selected square
 	// -- assets ---
 	mainFont font.Face
-	icons [13]*eb.Image // 13 = card(piece)
+	icons    [13]*eb.Image // 13 = card(piece)
 )
 
 func sprite(path string) *eb.Image {
@@ -54,10 +54,10 @@ func getEngine() *uci.Engine {
 		return nil
 	}
 	eng.SetOptions(uci.Options{
-		Hash:128,
-		Ponder:false,
-		OwnBook:true,
-		MultiPV:32,
+		Hash:    128,
+		Ponder:  false,
+		OwnBook: true,
+		MultiPV: 32,
 	})
 	return eng
 }
@@ -101,7 +101,7 @@ func squareAt(x, y int) chess.Square {
 	if x < 0 || x > 7 || y < 0 || y > 7 {
 		return chess.NoSquare
 	}
-	return chess.Square(int(8*(7-y))+x)
+	return chess.Square(int(8*(7-y)) + x)
 }
 
 func mouseSquare() chess.Square {
@@ -123,7 +123,7 @@ func isValidSquare(sq chess.Square) bool {
 }
 
 func validSquares() (result []chess.Square) {
-	counts := make(map[chess.Square] int)
+	counts := make(map[chess.Square]int)
 	for _, mv := range game.ValidMoves() {
 		if p0 == chess.NoSquare {
 			counts[mv.S1()]++
@@ -199,7 +199,7 @@ func watchMouse() {
 		switch {
 		case p0 == chess.NoSquare && isValidSquare(ms):
 			p0 = ms
-		case p0 == ms:  // click again to disable
+		case p0 == ms: // click again to disable
 			p0 = chess.NoSquare
 		default:
 			if valid, mv := validMove(p0, ms); valid {
@@ -240,7 +240,7 @@ func drawMarks(screen *eb.Image) {
 	validLight := color.RGBA{63, 63, 127, 63}
 	validDark := color.RGBA{32, 32, 64, 63}
 	for _, sq := range validSquares() {
-		if int(sq.Rank())&1 == int(sq.File())&1  {
+		if int(sq.Rank())&1 == int(sq.File())&1 {
 			drawSquare(screen, sq, validDark)
 		} else {
 			drawSquare(screen, sq, validLight)
@@ -267,7 +267,7 @@ func drawText(screen *eb.Image) {
 }
 
 func drawMoves(screen *eb.Image) {
-	for i := 0; i < len(moves); i+=2 {
+	for i := 0; i < len(moves); i += 2 {
 		n := i >> 1
 		w, b := moves[i], "*"
 		if i+1 < len(moves) {
@@ -279,7 +279,7 @@ func drawMoves(screen *eb.Image) {
 
 func update(screen *eb.Image) error {
 	watchMouse()
-	if ! eb.IsDrawingSkipped() {
+	if !eb.IsDrawingSkipped() {
 		drawBoard(screen)
 		drawMarks(screen)
 		drawPieces(screen)
