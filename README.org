@@ -1,0 +1,19 @@
+* chesscoach
+
+This is a collections of tools written in Go and html/javascript, meant to help people study chess (and to help me learn Go).
+
+** Requirements
+
+Stockfish is an extremely strong open source chess engine:
+https://stockfishchess.org
+
+
+To get a decent gcc (to compile the sqlite module), I use tdm-gcc:
+http://tdm-gcc.tdragon.net/
+
+
+** User interface
+
+- =chesscoach.go= provides a graphical UI built with a go game engine called ebiten. ( http://ebiten.org ). Currently, if you run this, you can either play against yourself, or play against stockfish, depending on whether it finds the stockfish executable (which it probably can't, unless you look in the source and fix the hard coded path).
+
+- =htmlui/chesscoach.html= renders a chessboard with =chessboard.js= and then only allows you to make moves from a predefined opening repertoire. (The intent is that you play as fast as you can against the situations it throws at you, to practice openings.) Currently this repertoire is in a json file that was hand-built based on the output of =opening-tree.go=, but eventually, the openings will be stored in a database and fetched over http.
