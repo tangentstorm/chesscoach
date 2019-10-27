@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+<!--
+  Multi-purpose chess coach UI.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -12,18 +15,69 @@
     .notation-322f9 { display: none } /* hide rank/file numbers in chessboard.js */
   </style>
 
+  <!-- chess.js provides a model for the game state, including move history and validation -->
+  <script src="lib/chess.min.js"></script>
+
+  <!-- custom ui for move list, forms using vue.js -->
   <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <style type="text/css">
+    li { display: inline; margin-right: 5px; } /* for now .. */
+  </style>
+
 </head>
 <body>
 
   <div id="chessboard" style="width:480px; height:480px"></div>
+  <div id="app">
+    <move-history :moves="hist"></move-history>
+    <valid-moves :moves="validMoves"></valid-moves>
+  </div>
 
 </body>
 <script>
 
+// Vue components -------------------------------------------------------------
+
+Vue.component('move-history', {
+  props: { moves: Array },
+  template: `
+  <div class="move-history">
+    <p><strong>Move history:</strong></p>
+    <ul class="move-history">
+      <li v-for="m in moves">{{m.san}}</li>
+    </ul>
+  </div>`})
+
+Vue.component('valid-moves', {
+  props: { moves: Array },
+  template: `
+  <div class="valid-moves">
+    <strong>Valid Moves:</strong>
+    <ul class="valid-moves">
+      <li v-for="m in moves">{{m.san}}</li>
+    </ul>
+  </div>`})
+
+
+// data model -----------------------------------------------------------------
+
+let chess = new Chess();
+let data = {
+  hist: [],             // history of moves (dictionaries from chess.js)
+  validMoves: [],       // current valid moves (dictionaries)
+}
+
+/// Add a move made by either side to the history.
+/// m is a string, usually in s0-s1 notation, since that's
+/// the lowest common denominator.
+function addMove(m, wasDrop) {
+  let mv = chess.move(m, {sloppy:true})
+  if (mv == null) throw new Error("invalid move: " + m);
+  else data.hist.push(mv);
+  if (!wasDrop) chessboard.move(m)
+}
 
 var goal = "";
-var hist = [];
 var root = [];
 var node = [];
 var cpuIsWhite = false;
@@ -35,9 +89,11 @@ let chessboard = Chessboard('#chessboard', {
   draggable: true,
   pieceTheme: (piece) => '../sprites/' + piece.toLowerCase() + '.png',
   onDrop(source, target, piece, newPos, oldPos, orientation) {
-    let move = `${source}-${target}`;
-    if (move === goal || goal === "") {
-      hist.push(move);
+    let m = `${source}-${target}`;
+    // the player's goal is to memorize a line, so if the goal is set,
+    // only allow the goal move. otherwise, allow anything.
+    if (m === goal || goal === "") {
+      addMove(m, true)
       setTimeout(cpuMove, 0)}
     else return 'snapback';}});
 
@@ -45,17 +101,21 @@ xhr = new XMLHttpRequest();
 xhr.open('GET', "repertoire.json");
 xhr.onload = function() { restart(JSON.parse(xhr.response), true) };
 xhr.send();
+let app = new Vue({ el:'#app', data })
 
-
-// nodes in our game tree are of two types: choices or moves
-// the player always has a single move to match.
-// the cpu always has a choice of moves to make.
+// nodes in our game tree are of two types:
+//  - goal: the player always has a single move to match.
+//  - pick: the cpu always has a choice of moves to make.
 function restart(tree, firstTime) {
   cpuIsWhite = Boolean(Math.round(Math.random()));
-  chessboard.orientation(cpuIsWhite ? "black" : "white");
+  let orientation = cpuIsWhite ? "black" : "white";
+  // avoid flicker if orientation isn't changing:
+  if (orientation != chessboard.orientation()) chessboard.orientation(orientation);
   chessboard.start();
-  root = node = tree;
-  hist = [];
+  chess.reset();
+  root = node = tree || root;
+  Vue.set(data, 'hist', [])
+  Vue.set(data, 'validMoves', chess.moves({verbose:true}))
   if (cpuIsWhite) setTimeout(cpuMove, 1000);
   else playerMove(root[0]);}
 
@@ -69,8 +129,7 @@ function cpuMove(){
   if (node) {
     let pick = Math.round(Math.random()*(node.length-1));
     node = node[pick]; // now we're on a single move
-    hist.push(node[SRCTGT]);
-    chessboard.move(node[SRCTGT]);
+    addMove(node[SRCTGT])
     let last = node[node.length-1];
     if (Array.isArray(last)) playerMove(last[0]);
     else restart(root)} // leaf node in repertoire is a cpu move:
