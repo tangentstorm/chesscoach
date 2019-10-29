@@ -48,7 +48,7 @@ func sprite(path string) *eb.Image {
 }
 
 func getEngine() *uci.Engine {
-	eng, err := uci.NewEngine("./stockfish_10_x64")
+	eng, err := uci.NewEngine("./stockfish")
 	if err != nil {
 		log.Println(err)
 		return nil
