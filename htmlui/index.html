@@ -135,5 +135,11 @@ function cpuMove(){
     else restart(root)} // leaf node in repertoire is a cpu move:
   else restart(root)} // leaf node was the player's move
 
+
+
+ws = new WebSocket('ws://localhost:8080/ws')
+ws.onopen = e=> ws.send('hello, ws!')
+ws.onmessage = e=> console.log(e)
+
 </script>
 </html>
