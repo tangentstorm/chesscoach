@@ -20,7 +20,7 @@ func quitOn(e error) {
 func main() {
 	r := http.NewServeMux()
 	r.Handle("/sprites/", http.FileServer(http.Dir("."))) // url not stripped, so it serves ./sprites/
-	r.Handle("/", http.FileServer(http.Dir("./htmlui")))
+	r.Handle("/", http.FileServer(http.Dir("./webui")))
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		up := websocket.Upgrader{}
 		ws, err := up.Upgrade(w, r, nil)
