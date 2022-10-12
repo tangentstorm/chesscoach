@@ -1,19 +1,153 @@
-* chesscoach
+#+title: chesscoach
 
-This is a collections of tools written in Go and html/javascript, meant to help people study chess (and to help me learn Go).
+This is a collections of (rather primitive) tools written in Go and html/javascript, meant to help people study chess (and to help me learn Go).
 
-** Requirements
+* Requirements
 
 Stockfish is an extremely strong open source chess engine:
 https://stockfishchess.org
 
 
-To get a decent gcc (to compile the sqlite module), I use tdm-gcc:
-http://tdm-gcc.tdragon.net/
+To get a decent gcc (to compile the sqlite module on windows), I used tdm-gcc:
+http://tdm-gcc.tdragon.net/  (this is only necessary on windows, and only if you want to build the opening book).
 
-
-** User interface
+* User interface
 
 - =chesscoach.go= provides a graphical UI built with a go game engine called ebiten. ( http://ebiten.org ). Currently, if you run this, you can either play against yourself, or play against stockfish, depending on whether it finds the stockfish executable (which it probably can't, unless you look in the source and fix the hard coded path).
 
 - =htmlui/chesscoach.html= renders a chessboard with =chessboard.js= and then only allows you to make moves from a predefined opening repertoire. (The intent is that you play as fast as you can against the situations it throws at you, to practice openings.) Currently this repertoire is in a json file that was hand-built based on the output of =opening-tree.go=, but eventually, the openings will be stored in a database and fetched over http.
+
+
+* building
+
+* install golang
+
+I'm using golang 1.19.
+
+[[https://go.dev/doc/install][install golang]]. Here's how I did it on ubuntu:
+
+
+#+begin_src sh
+cd ~/tmp
+wget https://go.dev/dl/go1.19.2.linux-amd64.tar.gz
+tar -xzf go1.19.2.linux-amd64.tar.gz
+export PATH=$PATH:~/tmp/go/bin  # also add to ~/.bashrc
+#+end_src
+
+* install or build stockfish
+
+There are different versions of stockfish for different CPU architectures
+even on the same platform: Download one that works for you from https://stockfishchess.org/download/
+
+Note: my ubuntu install was slightly out of date, so I just compiled from source:
+
+#+begin_src sh
+cd ~/src
+git clone https://github.com/official-stockfish/Stockfish/
+cd Stockfish
+git checkout tags/sf_15 -b sf_15  # shouldn't really matter
+cd src
+
+# note: i knew i had bmi2 from running:
+#   cat /proc/cpuinfo | grep bmi2
+make -j build ARCH=x86-64-bmi2
+#+end_src
+
+** trying stockfish by hand:
+to test it out by hand:
+
+#+begin_src sh
+./stockfish
+
+# start of universal chess interface protocol
+uci
+
+# tell stockfish you're done setting options
+isready
+
+# debug/display the board in initial position
+d
+
+# the protocol is stateless, so if you want to
+# actually play a game, you can tell it the full
+# move history:
+position startpos moves e2e4 g8f6
+d
+
+# alternately, you can give it a fen:
+# (from https://lichess.org/DIjOa0Du#57 LSGeneraal (2956) vs GM karthikvap (2911))
+position fen 5b2/p2n1pPk/b1n1p3/3pP1B1/2pP2N1/q1P2N2/P2Q1PB1/6K1 b - - 0 29
+d
+
+# you can then see how it judges the position:
+eval
+#+end_src
+
+
+* running the graphics program
+
+This was the first go program I ever wrote. It is a very spartan
+chess client and I currently have no intention of improving it.
+
+Instead, I will likely work on the web front-end.
+
+This is an extremely primitive graphical front-end.
+I have only tested it on windows.
+
+#+begin_src sh
+cd ~/ver/chesscoach
+# copy or link stockfish.exe
+go build ./gfxui
+./gfxui.exe   # at least that's how i do it on windows
+#+end_src
+
+If stockfish is present in ~./stockfish.exe~, it'll let you play
+against whatever stockfish considers the best move. Otherwise,
+you can alternate moving the white and black pieces with the mouse.
+
+(There's no dragging, so just click the piece you want to move and
+the square you want to move to.)
+
+
+* the web-based "coach" program
+
+The idea here is to practice opening moves that you have added
+to a [[file:webui/repertoire.json][json repertoire file]]. You are presented with a board, and
+are only allowed to make the moves specified in the repertoire.
+
+The current file was formed by selecting a few moves that
+stockfish considers best, and doesn't really have any particular
+human-friendly logic to it.
+
+To run it:
+
+#+begin_src sh
+cd ~/ver/chesscoach
+go build webui
+./webui
+http://localhost:8080/
+#+end_src
+
+The web server (file:webui/server.go) is just a simple HTTP server with support for websockets (that do not yet do anything).
+
+All it really does is serve the ~sprites~ and ~webui~ directories as static files.
+
+The file:webui/index.html displays the board and handles all the user interaction.
+
+
+* the opening book database
+
+The program in [[file:opening-book.go][opening-book.go]] builds a database of chess openings by asking stockfish to evaluate every possible opening position to a depth of 8 ply - that is, the first 4
+moves for each black and white.
+
+The output is a sqlite database. There is not currently any code that uses the database -- I only used it to manually create the small repertoire.json file used by the webui.
+
+#+begin_src sh
+cd ~/ver/chesscoach
+ln -s ~/src/Stockfish/src/stockfish .
+go build
+./chesscoach
+#+end_src
+
+(Note that this program takes several hours to run.)
+
